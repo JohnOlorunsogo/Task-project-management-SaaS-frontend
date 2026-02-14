@@ -13,12 +13,9 @@ export interface OrgMember {
     user_id: string;
     role: OrgRole;
     joined_at: string;
-    user: {
-        id: string;
-        email: string;
-        full_name: string;
-        avatar_url?: string;
-    };
+    email: string;
+    full_name: string;
+    avatar_url?: string;
 }
 
 export interface UserMembership {

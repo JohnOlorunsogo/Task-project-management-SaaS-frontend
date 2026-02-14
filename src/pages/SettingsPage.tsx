@@ -212,11 +212,11 @@ export default function SettingsPage() {
                                 <div key={m.id} className="px-8 py-5 flex items-center justify-between group hover:bg-slate-50/50 transition-colors">
                                     <div className="flex items-center space-x-4">
                                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600">
-                                            {m.user?.full_name?.charAt(0) || m.user_id?.charAt(0) || '?'}
+                                            {m.full_name?.charAt(0) || m.email?.charAt(0) || '?'}
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-slate-900">
-                                                {m.user?.full_name || `User ID: ${m.user_id}`}
+                                                {m.full_name || m.email}
                                             </p>
                                             <div className="flex items-center mt-1">
                                                 <span className={cn(

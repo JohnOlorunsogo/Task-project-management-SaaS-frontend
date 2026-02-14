@@ -19,9 +19,9 @@ export interface ProjectMember {
     user_id: string;
     role: ProjectRole;
     created_at: string;
-    // potential join fields
-    full_name?: string;
-    email?: string;
+    full_name: string;
+    email: string;
+    avatar_url?: string;
 }
 
 export interface UserProjectMembership {

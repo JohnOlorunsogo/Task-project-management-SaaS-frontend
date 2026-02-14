@@ -258,17 +258,6 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
         (om) => !projectMembers?.find((pm) => pm.user_id === om.user_id)
     );
 
-    const getMemberDetails = (member: any) => {
-        // First try to use details directly from the member object (if API returns them)
-        if (member.full_name) {
-            return { full_name: member.full_name, email: member.email };
-        }
-        // Fallback to finding in orgMembers
-        const orgMember = orgMembers?.find((m) => m.user_id === member.user_id);
-        // Defensive check: orgMember.user might be undefined if data is incomplete
-        return orgMember?.user ? orgMember.user : { full_name: "Unknown User", email: "" };
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -293,19 +282,15 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
                             <p className="text-sm text-slate-500 italic">No other organization members to add.</p>
                         ) : (
                             availableToAdd?.map((m) => {
-                                const user = m.user;
-                                // Skip invalid members
-                                if (!user) return null;
-
                                 return (
                                     <div key={m.user_id} className="flex items-center justify-between bg-white p-2 rounded border border-slate-200">
                                         <div className="flex items-center space-x-3">
                                             <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-xs font-bold text-slate-600">
-                                                {user.full_name?.charAt(0) || "?"}
+                                                {m.full_name?.charAt(0) || "?"}
                                             </div>
                                             <div>
-                                                <p className="text-sm font-medium">{user.full_name || "Unknown"}</p>
-                                                <p className="text-xs text-slate-400">{user.email || ""}</p>
+                                                <p className="text-sm font-medium">{m.full_name || "Unknown"}</p>
+                                                <p className="text-xs text-slate-400">{m.email || ""}</p>
                                             </div>
                                         </div>
                                         <button
@@ -327,16 +312,15 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
 
             <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 overflow-hidden">
                 {projectMembers?.map((member) => {
-                    const details = getMemberDetails(member);
                     return (
                         <div key={member.id} className="p-4 flex items-center justify-between bg-white">
                             <div className="flex items-center space-x-3">
                                 <div className="w-9 h-9 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold">
-                                    {details.full_name?.charAt(0) || "?"}
+                                    {member.full_name?.charAt(0) || "?"}
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-slate-900">{details.full_name || "Unknown User"}</p>
-                                    <p className="text-xs text-slate-500">{details.email || ""}</p>
+                                    <p className="text-sm font-medium text-slate-900">{member.full_name || "Unknown User"}</p>
+                                    <p className="text-xs text-slate-500">{member.email || ""}</p>
                                 </div>
                             </div>
                             <div className="flex items-center space-x-3">
