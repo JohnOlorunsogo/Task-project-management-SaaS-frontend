@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import {
     List,
     Trello,
@@ -11,8 +10,8 @@ import {
     Filter,
     Search,
 } from "lucide-react";
-import { apiClient } from "@/api/client";
 import { cn } from "@/lib/utils";
+import { useProjectStore } from "@/store/projectStore";
 import TaskListView from "./TaskListView.tsx";
 import TaskBoardView from "./TaskBoardView.tsx";
 import CreateTaskModal from "@/components/CreateTaskModal";
@@ -25,13 +24,13 @@ const ProjectDetailPage: React.FC = () => {
     const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
     const currentView = searchParams.get("view") || "list";
 
-    const { data: project, isLoading } = useQuery({
-        queryKey: ["project", projectId],
-        queryFn: async () => {
-            const response = await apiClient.get(`/projects/${projectId}`);
-            return response.data;
-        },
-    });
+    const { currentProject, fetchProject, loading } = useProjectStore();
+
+    useEffect(() => {
+        if (projectId) {
+            fetchProject(projectId);
+        }
+    }, [projectId, fetchProject]);
 
     const views = [
         { id: "list", label: "List", icon: List },
@@ -40,8 +39,8 @@ const ProjectDetailPage: React.FC = () => {
         { id: "calendar", label: "Calendar", icon: Calendar },
     ];
 
-    if (isLoading) return <div className="p-8 text-center text-slate-500">Loading project...</div>;
-    if (!project) return <div className="p-8 text-center text-destructive">Project not found</div>;
+    if (loading) return <div className="p-8 text-center text-slate-500">Loading project...</div>;
+    if (!currentProject) return <div className="p-8 text-center text-destructive">Project not found</div>;
 
     return (
         <div className="h-full flex flex-col -m-6">
@@ -50,11 +49,11 @@ const ProjectDetailPage: React.FC = () => {
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold">
-                            {project.name.charAt(0)}
+                            {currentProject.name.charAt(0)}
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-slate-900">{project.name}</h1>
-                            <p className="text-xs text-slate-500">Project · {project.status || "Active"}</p>
+                            <h1 className="text-xl font-bold text-slate-900">{currentProject.name}</h1>
+                            <p className="text-xs text-slate-500">Project · {currentProject.status || "Active"}</p>
                         </div>
                     </div>
 

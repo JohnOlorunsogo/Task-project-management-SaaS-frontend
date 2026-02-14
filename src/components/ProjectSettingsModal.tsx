@@ -1,5 +1,6 @@
-import React from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import React, { useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
     X,
     Settings,
@@ -11,9 +12,11 @@ import {
     Check,
     GripVertical,
 } from "lucide-react";
-import { apiClient } from "@/api/client";
 import { cn } from "@/lib/utils";
 import { useOrgStore } from "@/store/orgStore";
+import { useProjectStore } from "@/store/projectStore";
+import { ProjectService } from "@/api/project";
+import { ProjectRole } from "@/types/rbac";
 
 interface ProjectSettingsModalProps {
     isOpen: boolean;
@@ -99,42 +102,34 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ isOpen, onC
 };
 
 const GeneralTab: React.FC<{ projectId: string }> = ({ projectId }) => {
-    const queryClient = useQueryClient();
+    const { currentProject, fetchProject, fetchProjects } = useProjectStore();
     const [name, setName] = React.useState("");
     const [description, setDescription] = React.useState("");
     const [startDate, setStartDate] = React.useState("");
     const [endDate, setEndDate] = React.useState("");
     const [msg, setMsg] = React.useState<{ type: "success" | "error"; text: string } | null>(null);
 
-    const { data: project, isLoading } = useQuery({
-        queryKey: ["project", projectId],
-        queryFn: async () => {
-            const res = await apiClient.get(`/projects/${projectId}`);
-            return res.data;
-        },
-    });
-
     React.useEffect(() => {
-        if (project) {
-            setName(project.name);
-            setDescription(project.description || "");
-            setStartDate(project.start_date || "");
-            setEndDate(project.end_date || "");
+        if (currentProject) {
+            setName(currentProject.name);
+            setDescription(currentProject.description || "");
+            setStartDate(currentProject.start_date || "");
+            setEndDate(currentProject.end_date || "");
         }
-    }, [project]);
+    }, [currentProject]);
 
     const updateMutation = useMutation({
         mutationFn: async () => {
-            await apiClient.put(`/projects/${projectId}`, {
+            await ProjectService.updateProject(projectId, {
                 name,
-                description: description || null,
-                start_date: startDate || null,
-                end_date: endDate || null,
+                description: description || undefined,
+                start_date: startDate || undefined,
+                end_date: endDate || undefined,
             });
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-            queryClient.invalidateQueries({ queryKey: ["projects"] });
+        onSuccess: async () => {
+            await fetchProject(projectId);
+            await fetchProjects(); // update list
             setMsg({ type: "success", text: "Project updated successfully" });
             setTimeout(() => setMsg(null), 3000);
         },
@@ -143,7 +138,7 @@ const GeneralTab: React.FC<{ projectId: string }> = ({ projectId }) => {
         },
     });
 
-    if (isLoading) return <div className="text-center py-10 text-slate-500">Loading settings...</div>;
+    if (!currentProject) return <div className="text-center py-10 text-slate-500">Loading settings...</div>;
 
     return (
         <div className="space-y-6 max-w-xl">
@@ -217,62 +212,61 @@ const GeneralTab: React.FC<{ projectId: string }> = ({ projectId }) => {
 };
 
 const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
-    const queryClient = useQueryClient();
-    const currentOrgId = useOrgStore((state) => state.currentOrgId);
+    const { projectMembers, fetchProjectMembers, currentProject } = useProjectStore();
+    const { members: orgMembers, fetchMembers: fetchOrgMembers } = useOrgStore();
     const [isAddOpen, setIsAddOpen] = React.useState(false);
 
-    const { data: members, isLoading } = useQuery({
-        queryKey: ["project-members", projectId],
-        queryFn: async () => {
-            const res = await apiClient.get(`/projects/${projectId}/members`);
-            return res.data;
-        },
-    });
+    useEffect(() => {
+        fetchProjectMembers(projectId);
+    }, [projectId, fetchProjectMembers]);
 
-    const { data: orgMembers, isLoading: orgLoading } = useQuery({
-        queryKey: ["org-members", currentOrgId],
-        queryFn: async () => {
-            const res = await apiClient.get(`/organizations/${currentOrgId}/members`);
-            return res.data;
-        },
-        enabled: !!currentOrgId,
-    });
+    // Fetch org members to populate the "Add Member" list and for user details lookup
+    useEffect(() => {
+        if (currentProject?.org_id) {
+            fetchOrgMembers(currentProject.org_id);
+        }
+    }, [currentProject?.org_id, fetchOrgMembers]);
 
     const addMutation = useMutation({
         mutationFn: async (userId: string) => {
-            await apiClient.post(`/projects/${projectId}/members`, {
+            await ProjectService.addMember(projectId, {
                 user_id: userId,
-                role: "team_member",
+                role: ProjectRole.TEAM_MEMBER, // default
             });
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["project-members", projectId] });
+        onSuccess: async () => {
+            await fetchProjectMembers(projectId);
             setIsAddOpen(false);
         },
     });
 
     const removeMutation = useMutation({
         mutationFn: async (userId: string) => {
-            await apiClient.delete(`/projects/${projectId}/members/${userId}`);
+            await ProjectService.removeMember(projectId, userId);
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project-members", projectId] }),
+        onSuccess: () => fetchProjectMembers(projectId),
     });
 
     const changeRoleMutation = useMutation({
-        mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-            await apiClient.put(`/projects/${projectId}/members/${userId}/role`, { role });
+        mutationFn: async ({ userId, role }: { userId: string; role: ProjectRole }) => {
+            await ProjectService.changeMemberRole(projectId, userId, { role });
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project-members", projectId] }),
+        onSuccess: () => fetchProjectMembers(projectId),
     });
 
-    if (isLoading || orgLoading) return <div className="text-center py-10 text-slate-500">Loading members...</div>;
-
     const availableToAdd = orgMembers?.filter(
-        (om: any) => !members?.find((pm: any) => pm.user_id === om.user_id)
+        (om) => !projectMembers?.find((pm) => pm.user_id === om.user_id)
     );
 
-    const getMemberDetails = (userId: string) => {
-        return orgMembers?.find((m: any) => m.user_id === userId) || { user: { full_name: "Unknown User", email: "" } };
+    const getMemberDetails = (member: any) => {
+        // First try to use details directly from the member object (if API returns them)
+        if (member.full_name) {
+            return { full_name: member.full_name, email: member.email };
+        }
+        // Fallback to finding in orgMembers
+        const orgMember = orgMembers?.find((m) => m.user_id === member.user_id);
+        // Defensive check: orgMember.user might be undefined if data is incomplete
+        return orgMember?.user ? orgMember.user : { full_name: "Unknown User", email: "" };
     };
 
     return (
@@ -298,25 +292,31 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
                         {availableToAdd?.length === 0 ? (
                             <p className="text-sm text-slate-500 italic">No other organization members to add.</p>
                         ) : (
-                            availableToAdd?.map((m: any) => (
-                                <div key={m.user_id} className="flex items-center justify-between bg-white p-2 rounded border border-slate-200">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-xs font-bold text-slate-600">
-                                            {m.user.full_name.charAt(0)}
+                            availableToAdd?.map((m) => {
+                                const user = m.user;
+                                // Skip invalid members
+                                if (!user) return null;
+
+                                return (
+                                    <div key={m.user_id} className="flex items-center justify-between bg-white p-2 rounded border border-slate-200">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-xs font-bold text-slate-600">
+                                                {user.full_name?.charAt(0) || "?"}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium">{user.full_name || "Unknown"}</p>
+                                                <p className="text-xs text-slate-400">{user.email || ""}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium">{m.user.full_name}</p>
-                                            <p className="text-xs text-slate-400">{m.user.email}</p>
-                                        </div>
+                                        <button
+                                            onClick={() => addMutation.mutate(m.user_id)}
+                                            className="text-primary hover:bg-primary/5 px-3 py-1.5 rounded text-xs font-medium transition"
+                                        >
+                                            Add
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => addMutation.mutate(m.user_id)}
-                                        className="text-primary hover:bg-primary/5 px-3 py-1.5 rounded text-xs font-medium transition"
-                                    >
-                                        Add
-                                    </button>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                         <button onClick={() => setIsAddOpen(false)} className="text-xs text-slate-500 hover:underline mt-2">
                             Cancel
@@ -326,31 +326,30 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
             )}
 
             <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 overflow-hidden">
-                {members?.map((member: any) => {
-                    const details = getMemberDetails(member.user_id);
+                {projectMembers?.map((member) => {
+                    const details = getMemberDetails(member);
                     return (
                         <div key={member.id} className="p-4 flex items-center justify-between bg-white">
                             <div className="flex items-center space-x-3">
                                 <div className="w-9 h-9 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold">
-                                    {details.user.full_name.charAt(0)}
+                                    {details.full_name?.charAt(0) || "?"}
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-slate-900">{details.user.full_name}</p>
-                                    <p className="text-xs text-slate-500">{details.user.email}</p>
+                                    <p className="text-sm font-medium text-slate-900">{details.full_name || "Unknown User"}</p>
+                                    <p className="text-xs text-slate-500">{details.email || ""}</p>
                                 </div>
                             </div>
                             <div className="flex items-center space-x-3">
                                 <select
                                     value={member.role}
-                                    onChange={(e) => changeRoleMutation.mutate({ userId: member.user_id, role: e.target.value })}
+                                    onChange={(e) => changeRoleMutation.mutate({ userId: member.user_id, role: e.target.value as ProjectRole })}
                                     className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-primary bg-slate-50"
                                 >
-                                    <option value="owner">Owner</option>
-                                    <option value="project_manager">Manager</option>
-                                    <option value="team_member">Member</option>
-                                    <option value="viewer">Viewer</option>
+                                    {Object.values(ProjectRole).map((role) => (
+                                        <option key={role} value={role}>{role}</option>
+                                    ))}
                                 </select>
-                                {member.role !== "owner" && (
+                                {member.role !== ProjectRole.OWNER && (
                                     <button
                                         onClick={() => removeMutation.mutate(member.user_id)}
                                         className="text-slate-400 hover:text-destructive transition p-1"
@@ -369,29 +368,25 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
 };
 
 const StatusesTab: React.FC<{ projectId: string }> = ({ projectId }) => {
-    const queryClient = useQueryClient();
+    const { customStatuses, fetchCustomStatuses } = useProjectStore();
     const [isCreating, setIsCreating] = React.useState(false);
     const [newName, setNewName] = React.useState("");
     const [newColor, setNewColor] = React.useState("#6B7280");
 
-    const { data: statuses, isLoading } = useQuery({
-        queryKey: ["project-statuses", projectId],
-        queryFn: async () => {
-            const res = await apiClient.get(`/projects/${projectId}/statuses`);
-            return res.data;
-        },
-    });
+    useEffect(() => {
+        fetchCustomStatuses(projectId);
+    }, [projectId, fetchCustomStatuses]);
 
     const createMutation = useMutation({
         mutationFn: async () => {
-            await apiClient.post(`/projects/${projectId}/statuses`, {
+            await ProjectService.createStatus(projectId, {
                 name: newName,
                 color: newColor,
-                position: Array.isArray(statuses) ? statuses.length : 0,
+                position: customStatuses.length,
             });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["project-statuses", projectId] });
+            fetchCustomStatuses(projectId);
             setIsCreating(false);
             setNewName("");
             setNewColor("#6B7280");
@@ -400,20 +395,17 @@ const StatusesTab: React.FC<{ projectId: string }> = ({ projectId }) => {
 
     const deleteMutation = useMutation({
         mutationFn: async (statusId: string) => {
-            await apiClient.delete(`/projects/${projectId}/statuses/${statusId}`);
+            await ProjectService.deleteStatus(projectId, statusId);
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project-statuses", projectId] }),
+        onSuccess: () => fetchCustomStatuses(projectId),
     });
-
-    if (isLoading) return <div className="text-center py-10 text-slate-500">Loading statuses...</div>;
 
     const colors = [
         "#6B7280", // Gray
         "#EF4444", // Red
         "#F59E0B", // Amber
         "#10B981", // Emerald
-        "#3B82F6", // Blue
-        "#8B5CF6", // Violet
+        "#3B82F6", // Violet
         "#EC4899", // Pink
     ];
 
@@ -472,7 +464,7 @@ const StatusesTab: React.FC<{ projectId: string }> = ({ projectId }) => {
             )}
 
             <div className="space-y-2">
-                {statuses?.map((status: any) => (
+                {customStatuses?.map((status) => (
                     <div key={status.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 group">
                         <div className="flex items-center space-x-3">
                             <GripVertical className="w-4 h-4 text-slate-300 cursor-move" />

@@ -1,5 +1,5 @@
-import React from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
     Plus,
@@ -9,46 +9,46 @@ import {
     Trash2,
     MoreHorizontal,
     ArrowRight,
+    Globe,
+    User as UserIcon,
 } from "lucide-react";
-import { apiClient } from "@/api/client";
 import { useOrgStore } from "@/store/orgStore";
+import { useProjectStore } from "@/store/projectStore";
+import { useAuthStore } from "@/store/authStore";
 import CreateProjectModal from "@/components/CreateProjectModal";
-
-interface Project {
-    id: string;
-    name: string;
-    description: string | null;
-    owner_id: string;
-    start_date: string | null;
-    end_date: string | null;
-    is_template: boolean;
-    created_at: string;
-}
+import { OrgRole } from "@/types/rbac";
 
 const ProjectsListPage: React.FC = () => {
-    const currentOrgId = useOrgStore((state) => state.currentOrgId);
+    const { currentOrgId, members } = useOrgStore();
+    const { user } = useAuthStore();
+    const { projects, fetchProjects, deleteProject, loading: storeLoading } = useProjectStore();
     const queryClient = useQueryClient();
+
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState("");
     const [menuOpenId, setMenuOpenId] = React.useState<string | null>(null);
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
+    const [showAllProjects, setShowAllProjects] = React.useState(false);
 
-    const { data: projects, isLoading } = useQuery<Project[]>({
-        queryKey: ["projects", currentOrgId],
-        queryFn: async () => {
-            const response = await apiClient.get("/projects");
-            return response.data;
-        },
-        enabled: !!currentOrgId,
-    });
+    // Check if user is admin
+    const currentMember = members.find(m => m.user_id === user?.id);
+    const isAdmin = currentMember?.role === OrgRole.ORG_ADMIN || currentMember?.role === OrgRole.PROJ_ADMIN;
+
+    // Fetch projects on mount or when org changes or toggle changes
+    useEffect(() => {
+        if (currentOrgId) {
+            fetchProjects(showAllProjects && isAdmin); // Pass isAdmin flag if showAll is true
+        }
+    }, [currentOrgId, fetchProjects, showAllProjects, isAdmin]);
 
     const deleteMutation = useMutation({
         mutationFn: async (projectId: string) => {
-            await apiClient.delete(`/projects/${projectId}`);
+            await deleteProject(projectId);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["projects"] });
+            queryClient.invalidateQueries({ queryKey: ["projects"] }); // Keep cache in sync if used elsewhere
             setDeletingId(null);
+            setMenuOpenId(null);
         },
     });
 
@@ -63,7 +63,7 @@ const ProjectsListPage: React.FC = () => {
         );
     }, [projects, searchQuery]);
 
-    const formatDate = (dateStr: string | null) => {
+    const formatDate = (dateStr: string | null | undefined) => {
         if (!dateStr) return null;
         return new Date(dateStr).toLocaleDateString("en-US", {
             month: "short",
@@ -90,7 +90,7 @@ const ProjectsListPage: React.FC = () => {
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
                     <p className="text-slate-500 text-sm mt-1">
-                        {projects?.length || 0} project{projects?.length !== 1 ? "s" : ""} in your organization
+                        {projects?.length || 0} project{projects?.length !== 1 ? "s" : ""}
                     </p>
                 </div>
                 <button
@@ -102,19 +102,42 @@ const ProjectsListPage: React.FC = () => {
                 </button>
             </div>
 
-            {/* Search Bar */}
-            <div className="relative max-w-md">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search projects..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
-                />
+            {/* Controls Bar */}
+            <div className="flex items-center space-x-4">
+                {/* Search Bar */}
+                <div className="relative max-w-md flex-1">
+                    <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search projects..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                    />
+                </div>
+
+                {/* Admin View Toggle */}
+                {isAdmin && (
+                    <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <button
+                            onClick={() => setShowAllProjects(false)}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center transition ${!showAllProjects ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <UserIcon className="w-3.5 h-3.5 mr-1.5" />
+                            My Projects
+                        </button>
+                        <button
+                            onClick={() => setShowAllProjects(true)}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center transition ${showAllProjects ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <Globe className="w-3.5 h-3.5 mr-1.5" />
+                            All Projects
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Content */}
-            {isLoading ? (
+            {storeLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse">
@@ -140,8 +163,10 @@ const ProjectsListPage: React.FC = () => {
                         </>
                     ) : (
                         <>
-                            <h3 className="text-lg font-semibold text-slate-700 mb-1">No projects yet</h3>
-                            <p className="text-slate-500 text-sm mb-6">Create your first project to start organizing tasks.</p>
+                            <h3 className="text-lg font-semibold text-slate-700 mb-1">No projects found</h3>
+                            <p className="text-slate-500 text-sm mb-6">
+                                {showAllProjects ? "There are no projects in this organization yet." : "You are not a member of any projects."}
+                            </p>
                             <button
                                 onClick={() => setIsCreateOpen(true)}
                                 className="bg-primary text-white px-5 py-2.5 rounded-lg font-medium inline-flex items-center shadow-sm hover:bg-primary/90 transition"

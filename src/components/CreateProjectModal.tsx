@@ -1,7 +1,8 @@
 import React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Loader2, LayoutTemplate } from "lucide-react";
-import { apiClient } from "@/api/client";
+import { ProjectService } from "@/api/project";
+import { useProjectStore } from "@/store/projectStore";
 
 interface CreateProjectModalProps {
     isOpen: boolean;
@@ -16,6 +17,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
     const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>("");
     const [error, setError] = React.useState<string | null>(null);
 
+    const { fetchProjects } = useProjectStore();
     const queryClient = useQueryClient();
 
     // Fetch available templates
@@ -23,8 +25,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
         queryKey: ["project-templates"],
         queryFn: async () => {
             try {
-                const res = await apiClient.get("/projects/templates/list");
-                return res.data;
+                return await ProjectService.listTemplates();
             } catch (e) {
                 return []; // Fail silently for templates
             }
@@ -34,26 +35,23 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
 
     const createMutation = useMutation({
         mutationFn: async () => {
+            const payload: any = { name };
+            if (description) payload.description = description;
+            if (startDate) payload.start_date = startDate;
+            if (endDate) payload.end_date = endDate;
+
             if (selectedTemplateId) {
                 // Create from template
-                const payload: any = { name };
-                if (description) payload.description = description;
-                if (startDate) payload.start_date = startDate;
-                if (endDate) payload.end_date = endDate;
-
-                await apiClient.post(`/projects/from-template/${selectedTemplateId}`, payload);
+                await ProjectService.createFromTemplate(selectedTemplateId, payload);
             } else {
                 // Create from scratch
-                const payload: any = { name };
-                if (description) payload.description = description;
-                if (startDate) payload.start_date = startDate;
-                if (endDate) payload.end_date = endDate;
-
-                await apiClient.post("/projects", payload);
+                await ProjectService.createProject(payload);
             }
         },
-        onSuccess: () => {
+        onSuccess: async () => {
+            // Invalidate React Query cache AND update store
             queryClient.invalidateQueries({ queryKey: ["projects"] });
+            await fetchProjects(); // update store
             resetForm();
             onClose();
         },

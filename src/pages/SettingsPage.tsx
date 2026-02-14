@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import React, { useState } from "react";
+
+import { useMutation } from "@tanstack/react-query";
 import { useOrgStore } from "@/store/orgStore";
 import {
     Users,
@@ -12,59 +12,77 @@ import {
     Check
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { OrgService } from "@/api/org";
+import { OrgRole } from "@/types/rbac";
+
 
 export default function SettingsPage() {
-    const [activeTab, setActiveTab] = useState<"general" | "members">("members");
-    const { currentOrgId, orgs } = useOrgStore();
-    const queryClient = useQueryClient();
+    const [activeTab, setActiveTab] = useState<"general" | "members" | "teams">("members");
+    const { currentOrgId, orgs, members, teams, fetchMembers, fetchTeams } = useOrgStore();
 
     const currentOrg = orgs.find(o => o.id === currentOrgId);
 
-    // Fetch members
-    const { data: members, isLoading: membersLoading } = useQuery({
-        queryKey: ["org-members", currentOrgId],
-        queryFn: async () => {
-            const res = await apiClient.get(`/organizations/${currentOrgId}/members`);
-            return res.data;
-        },
-        enabled: !!currentOrgId,
-    });
+    // Fetch members and teams on mount or org change
+    React.useEffect(() => {
+        if (currentOrgId) {
+            fetchMembers(currentOrgId);
+            fetchTeams(currentOrgId);
+        }
+    }, [currentOrgId, fetchMembers, fetchTeams]);
 
     // Invite member mutation
     const [inviteEmail, setInviteEmail] = useState("");
-    const [inviteRole, setInviteRole] = useState("member");
+    const [inviteRole, setInviteRole] = useState<OrgRole>(OrgRole.MEMBER);
 
     const inviteMutation = useMutation({
         mutationFn: async () => {
-            return apiClient.post(`/organizations/${currentOrgId}/members`, {
+            if (!currentOrgId) return;
+            return OrgService.addMember(currentOrgId, {
                 email: inviteEmail,
                 role: inviteRole
             });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["org-members", currentOrgId] });
+            if (currentOrgId) fetchMembers(currentOrgId);
             setInviteEmail("");
-            setInviteRole("member");
+            setInviteRole(OrgRole.MEMBER);
         }
     });
 
     // Remove member mutation
     const removeMutation = useMutation({
         mutationFn: async (userId: string) => {
-            return apiClient.delete(`/organizations/${currentOrgId}/members/${userId}`);
+            if (!currentOrgId) return;
+            return OrgService.removeMember(currentOrgId, userId);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["org-members", currentOrgId] });
+            if (currentOrgId) fetchMembers(currentOrgId);
         }
     });
 
     // Change role mutation
     const roleMutation = useMutation({
-        mutationFn: async ({ userId, role }: { userId: string, role: string }) => {
-            return apiClient.put(`/organizations/${currentOrgId}/members/${userId}/role`, { role });
+        mutationFn: async ({ userId, role }: { userId: string, role: OrgRole }) => {
+            if (!currentOrgId) return;
+            return OrgService.changeMemberRole(currentOrgId, userId, { role });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["org-members", currentOrgId] });
+            if (currentOrgId) fetchMembers(currentOrgId);
+        }
+    });
+
+    // Create Team Mutation
+    const [teamName, setTeamName] = useState("");
+    const [teamDesc, setTeamDesc] = useState("");
+    const createTeamMutation = useMutation({
+        mutationFn: async () => {
+            if (!currentOrgId) return;
+            return OrgService.createTeam(currentOrgId, { name: teamName, description: teamDesc });
+        },
+        onSuccess: () => {
+            if (currentOrgId) fetchTeams(currentOrgId);
+            setTeamName("");
+            setTeamDesc("");
         }
     });
 
@@ -76,14 +94,14 @@ export default function SettingsPage() {
         <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
             <div>
                 <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
-                <p className="text-slate-500 mt-1">Manage your organization and team members.</p>
+                <p className="text-slate-500 mt-1">Manage your organization, team members, and teams.</p>
             </div>
 
-            <div className="flex border-b border-slate-200">
+            <div className="flex border-b border-slate-200 overflow-x-auto">
                 <button
                     onClick={() => setActiveTab("general")}
                     className={cn(
-                        "px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center space-x-2",
+                        "px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center space-x-2 whitespace-nowrap",
                         activeTab === "general" ? "border-primary text-primary" : "border-transparent text-slate-500 hover:text-slate-700"
                     )}
                 >
@@ -93,12 +111,22 @@ export default function SettingsPage() {
                 <button
                     onClick={() => setActiveTab("members")}
                     className={cn(
-                        "px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center space-x-2",
+                        "px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center space-x-2 whitespace-nowrap",
                         activeTab === "members" ? "border-primary text-primary" : "border-transparent text-slate-500 hover:text-slate-700"
                     )}
                 >
                     <Users className="w-4 h-4" />
                     <span>Members</span>
+                </button>
+                <button
+                    onClick={() => setActiveTab("teams")}
+                    className={cn(
+                        "px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center space-x-2 whitespace-nowrap",
+                        activeTab === "teams" ? "border-primary text-primary" : "border-transparent text-slate-500 hover:text-slate-700"
+                    )}
+                >
+                    <Users className="w-4 h-4" />
+                    <span>Teams</span>
                 </button>
             </div>
 
@@ -151,11 +179,11 @@ export default function SettingsPage() {
                                 <select
                                     className="w-full px-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
                                     value={inviteRole}
-                                    onChange={(e) => setInviteRole(e.target.value)}
+                                    onChange={(e) => setInviteRole(e.target.value as OrgRole)}
                                 >
-                                    <option value="member">Member</option>
-                                    <option value="proj_admin">Project Admin</option>
-                                    <option value="org_admin">Org Admin</option>
+                                    <option value={OrgRole.MEMBER}>Member</option>
+                                    <option value={OrgRole.PROJ_ADMIN}>Project Admin</option>
+                                    <option value={OrgRole.ORG_ADMIN}>Org Admin</option>
                                 </select>
                             </div>
                             <button
@@ -180,21 +208,21 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="divide-y divide-slate-100">
-                            {membersLoading ? (
-                                <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
-                            ) : members?.map((m: any) => (
-                                <div key={m.user_id} className="px-8 py-5 flex items-center justify-between group hover:bg-slate-50/50 transition-colors">
+                            {members?.map((m) => (
+                                <div key={m.id} className="px-8 py-5 flex items-center justify-between group hover:bg-slate-50/50 transition-colors">
                                     <div className="flex items-center space-x-4">
                                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600">
-                                            {m.user_id.charAt(0).toUpperCase()}
+                                            {m.user?.full_name?.charAt(0) || m.user_id?.charAt(0) || '?'}
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-slate-900">User ID: {m.user_id}</p>
+                                            <p className="text-sm font-bold text-slate-900">
+                                                {m.user?.full_name || `User ID: ${m.user_id}`}
+                                            </p>
                                             <div className="flex items-center mt-1">
                                                 <span className={cn(
                                                     "text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider",
-                                                    m.role === "org_admin" ? "bg-amber-100 text-amber-700" :
-                                                        m.role === "proj_admin" ? "bg-blue-100 text-blue-700" :
+                                                    m.role === OrgRole.ORG_ADMIN ? "bg-amber-100 text-amber-700" :
+                                                        m.role === OrgRole.PROJ_ADMIN ? "bg-blue-100 text-blue-700" :
                                                             "bg-slate-100 text-slate-600"
                                                 )}>
                                                     {m.role.replace('_', ' ')}
@@ -206,12 +234,12 @@ export default function SettingsPage() {
                                     <div className="flex items-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <select
                                             value={m.role}
-                                            onChange={(e) => roleMutation.mutate({ userId: m.user_id, role: e.target.value })}
+                                            onChange={(e) => roleMutation.mutate({ userId: m.user_id, role: e.target.value as OrgRole })}
                                             className="text-xs bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-primary/10"
                                         >
-                                            <option value="member">Member</option>
-                                            <option value="proj_admin">Admin</option>
-                                            <option value="org_admin">Org Admin</option>
+                                            <option value={OrgRole.MEMBER}>Member</option>
+                                            <option value={OrgRole.PROJ_ADMIN}>Admin</option>
+                                            <option value={OrgRole.ORG_ADMIN}>Org Admin</option>
                                         </select>
                                         <button
                                             onClick={() => removeMutation.mutate(m.user_id)}
@@ -223,6 +251,81 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === "teams" && (
+                <div className="space-y-6">
+                    {/* Create Team Section */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-lg font-bold">Create Team</h3>
+                                <p className="text-sm text-slate-500">Organize members into teams.</p>
+                            </div>
+                        </div>
+                        <form
+                            onSubmit={(e) => { e.preventDefault(); createTeamMutation.mutate(); }}
+                            className="flex flex-col gap-4"
+                        >
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        placeholder="Team Name (e.g. Frontend)"
+                                        className="w-full px-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
+                                        value={teamName}
+                                        onChange={(e) => setTeamName(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        placeholder="Description (Optional)"
+                                        className="w-full px-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
+                                        value={teamDesc}
+                                        onChange={(e) => setTeamDesc(e.target.value)}
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={createTeamMutation.isPending || !teamName}
+                                    className="bg-primary text-white px-8 py-2.5 rounded-lg font-bold hover:bg-primary/90 transition shadow-md disabled:opacity-50 flex items-center justify-center whitespace-nowrap"
+                                >
+                                    {createTeamMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Team"}
+                                </button>
+                            </div>
+                        </form>
+                        {createTeamMutation.isSuccess && (
+                            <p className="mt-3 text-sm text-emerald-600 flex items-center font-medium animate-in fade-in slide-in-from-top-1">
+                                <Check className="w-4 h-4 mr-1.5" /> Team created!
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Teams List */}
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div className="px-8 py-4 bg-slate-50/50 border-b border-slate-200">
+                            <h3 className="font-bold text-slate-800">Teams ({teams?.length || 0})</h3>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                            {teams?.map((team) => (
+                                <div key={team.id} className="px-8 py-5 flex items-center justify-between group hover:bg-slate-50/50 transition-colors">
+                                    <div>
+                                        <h4 className="font-bold text-slate-900">{team.name}</h4>
+                                        <p className="text-sm text-slate-500">{team.description || "No description"}</p>
+                                    </div>
+                                    {/* Future: Add Manage Team Members button or similar */}
+                                </div>
+                            ))}
+                            {teams?.length === 0 && (
+                                <div className="p-8 text-center text-slate-500">
+                                    No teams yet. Create one above!
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
