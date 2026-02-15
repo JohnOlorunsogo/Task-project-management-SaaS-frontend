@@ -19,7 +19,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isCollapsed, setIsCollapsed] = React.useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
     const { user, logout } = useAuthStore();
-    const { orgs, currentOrgId, setCurrentOrg, fetchOrgs } = useOrgStore();
+    const { orgs, currentOrgId, setCurrentOrg, fetchOrgs, teams, fetchTeams } = useOrgStore();
     const navigate = useNavigate();
 
     const [orgCheckDone, setOrgCheckDone] = React.useState(false);
@@ -31,6 +31,12 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             setOrgCheckDone(true);
         });
     }, [fetchOrgs]);
+
+    React.useEffect(() => {
+        if (currentOrgId) {
+            fetchTeams(currentOrgId);
+        }
+    }, [currentOrgId, fetchTeams]);
 
     const handleLogout = () => {
         useOrgStore.getState().clearOrgs();
@@ -129,16 +135,19 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                                 Teams
                             </span>
                         </div>
-                        {/* Mock Teams listing */}
                         <div className="space-y-1">
-                            <button className="w-full flex items-center px-3 py-1.5 rounded-md text-slate-600 hover:bg-slate-50 text-sm">
-                                <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                                {!isCollapsed && <span className="ml-3 truncate">Engineering</span>}
-                            </button>
-                            <button className="w-full flex items-center px-3 py-1.5 rounded-md text-slate-600 hover:bg-slate-50 text-sm">
-                                <div className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
-                                {!isCollapsed && <span className="ml-3 truncate">Marketing</span>}
-                            </button>
+                            {teams.length === 0 && !isCollapsed && (
+                                <p className="px-3 text-xs text-slate-400 italic">No teams found</p>
+                            )}
+                            {teams.map((team) => (
+                                <div
+                                    key={team.id}
+                                    className="w-full flex items-center px-3 py-1.5 rounded-md text-slate-600 hover:bg-slate-50 text-sm cursor-pointer"
+                                >
+                                    <div className="w-2 h-2 rounded-full bg-primary/60 shrink-0" />
+                                    {!isCollapsed && <span className="ml-3 truncate">{team.name}</span>}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </nav>
