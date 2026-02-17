@@ -2,10 +2,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { ProjectService } from "../api/project";
 import { Project, ProjectMember, CustomStatus } from "../types/project";
+import { useAuthStore } from "./authStore";
 
 interface ProjectState {
     projects: Project[];
     currentProject: Project | null;
+    currentProjectPermissions: string[];
     projectMembers: ProjectMember[];
     customStatuses: CustomStatus[];
     loading: boolean;
@@ -30,6 +32,7 @@ export const useProjectStore = create<ProjectState>()(
         (set, get) => ({
             projects: [],
             currentProject: null,
+            currentProjectPermissions: [],
             projectMembers: [],
             customStatuses: [],
             loading: false,
@@ -51,13 +54,28 @@ export const useProjectStore = create<ProjectState>()(
                 set({ loading: true, error: null });
                 try {
                     const project = await ProjectService.getProject(projectId);
-                    set({ currentProject: project, loading: false });
+
+                    // Fetch permissions if user is logged in
+                    const userId = useAuthStore.getState().user?.id;
+                    let permissions: string[] = [];
+                    if (userId) {
+                        try {
+                            const membership = await ProjectService.checkMembership(projectId, userId);
+                            permissions = membership.permissions;
+                        } catch (e) {
+                            console.warn("Failed to check project membership", e);
+                        }
+                    }
+
+                    set({ currentProject: project, currentProjectPermissions: permissions, loading: false });
                     return project;
                 } catch (error: any) {
                     set({ error: error.message || "Failed to fetch project", loading: false });
                     return null;
                 }
             },
+
+            // ... createProject, deleteProject ...
 
             createProject: async (data) => {
                 set({ loading: true, error: null });
@@ -101,8 +119,8 @@ export const useProjectStore = create<ProjectState>()(
                 }
             },
 
-            setCurrentProject: (project) => set({ currentProject: project }),
-            clearProjectState: () => set({ projects: [], currentProject: null, projectMembers: [], customStatuses: [] }),
+            setCurrentProject: (project) => set({ currentProject: project, currentProjectPermissions: [] }),
+            clearProjectState: () => set({ projects: [], currentProject: null, currentProjectPermissions: [], projectMembers: [], customStatuses: [] }),
         }),
         {
             name: "project-storage",

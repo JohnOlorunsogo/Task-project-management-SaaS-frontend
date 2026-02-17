@@ -28,6 +28,7 @@ export interface UserProjectMembership {
     project_id: string;
     user_id: string;
     role: ProjectRole;
+    permissions: string[];
 }
 
 export interface CustomStatus {

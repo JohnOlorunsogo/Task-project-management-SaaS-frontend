@@ -14,9 +14,12 @@ import {
 import { cn } from "@/lib/utils";
 import { OrgService } from "@/api/org";
 import { OrgRole } from "@/types/rbac";
+import { usePermission } from "@/hooks/usePermission";
 
 
 export default function SettingsPage() {
+    const canManageMembers = usePermission("manage_org_members");
+    const canManageTeams = usePermission("manage_teams");
     const [activeTab, setActiveTab] = useState<"general" | "members" | "teams">("members");
     const { currentOrgId, orgs, members, teams, fetchMembers, fetchTeams } = useOrgStore();
 
@@ -29,6 +32,8 @@ export default function SettingsPage() {
             fetchTeams(currentOrgId);
         }
     }, [currentOrgId, fetchMembers, fetchTeams]);
+
+    const [error, setError] = useState<string | null>(null);
 
     // Invite member mutation
     const [inviteEmail, setInviteEmail] = useState("");
@@ -46,6 +51,10 @@ export default function SettingsPage() {
             if (currentOrgId) fetchMembers(currentOrgId);
             setInviteEmail("");
             setInviteRole(OrgRole.MEMBER);
+            setError(null);
+        },
+        onError: (err: any) => {
+            setError(err.response?.data?.detail || "Failed to invite member");
         }
     });
 
@@ -57,6 +66,10 @@ export default function SettingsPage() {
         },
         onSuccess: () => {
             if (currentOrgId) fetchMembers(currentOrgId);
+            setError(null);
+        },
+        onError: (err: any) => {
+            setError(err.response?.data?.detail || "Failed to remove member");
         }
     });
 
@@ -68,6 +81,10 @@ export default function SettingsPage() {
         },
         onSuccess: () => {
             if (currentOrgId) fetchMembers(currentOrgId);
+            setError(null);
+        },
+        onError: (err: any) => {
+            setError(err.response?.data?.detail || "Failed to change role");
         }
     });
 
@@ -146,60 +163,75 @@ export default function SettingsPage() {
                 </div>
             )}
 
+
+
             {activeTab === "members" && (
                 <div className="space-y-6">
-                    {/* Invite Section */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-lg font-bold">Invite Members</h3>
-                                <p className="text-sm text-slate-500">Add new people to your organization by email.</p>
-                            </div>
-                            <UserPlus className="w-8 h-8 text-primary/20" />
-                        </div>
-
-                        <form
-                            onSubmit={(e) => { e.preventDefault(); inviteMutation.mutate(); }}
-                            className="flex flex-col md:flex-row gap-4"
-                        >
-                            <div className="flex-1">
-                                <div className="relative">
-                                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input
-                                        type="email"
-                                        placeholder="email@example.com"
-                                        className="w-full pl-10 pr-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
-                                        value={inviteEmail}
-                                        onChange={(e) => setInviteEmail(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <div className="w-full md:w-48">
-                                <select
-                                    className="w-full px-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
-                                    value={inviteRole}
-                                    onChange={(e) => setInviteRole(e.target.value as OrgRole)}
-                                >
-                                    <option value={OrgRole.MEMBER}>Member</option>
-                                    <option value={OrgRole.PROJ_ADMIN}>Project Admin</option>
-                                    <option value={OrgRole.ORG_ADMIN}>Org Admin</option>
-                                </select>
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={inviteMutation.isPending || !inviteEmail}
-                                className="bg-primary text-white px-8 py-2.5 rounded-lg font-bold hover:bg-primary/90 transition shadow-md disabled:opacity-50 flex items-center justify-center whitespace-nowrap min-w-[140px]"
-                            >
-                                {inviteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Invite"}
+                    {/* Error Message */}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center animate-in fade-in slide-in-from-top-1">
+                            <span className="font-bold mr-2">Error:</span> {error}
+                            <button onClick={() => setError(null)} className="ml-auto hover:text-red-900">
+                                <span className="sr-only">Dismiss</span>
+                                ×
                             </button>
-                        </form>
-                        {inviteMutation.isSuccess && (
-                            <p className="mt-3 text-sm text-emerald-600 flex items-center font-medium animate-in fade-in slide-in-from-top-1">
-                                <Check className="w-4 h-4 mr-1.5" /> Invitation sent!
-                            </p>
-                        )}
-                    </div>
+                        </div>
+                    )}
+
+                    {/* Invite Section */}
+                    {canManageMembers && (
+                        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-lg font-bold">Invite Members</h3>
+                                    <p className="text-sm text-slate-500">Add new people to your organization by email.</p>
+                                </div>
+                                <UserPlus className="w-8 h-8 text-primary/20" />
+                            </div>
+
+                            <form
+                                onSubmit={(e) => { e.preventDefault(); inviteMutation.mutate(); }}
+                                className="flex flex-col md:flex-row gap-4"
+                            >
+                                <div className="flex-1">
+                                    <div className="relative">
+                                        <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="email"
+                                            placeholder="email@example.com"
+                                            className="w-full pl-10 pr-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
+                                            value={inviteEmail}
+                                            onChange={(e) => setInviteEmail(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="w-full md:w-48">
+                                    <select
+                                        className="w-full px-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
+                                        value={inviteRole}
+                                        onChange={(e) => setInviteRole(e.target.value as OrgRole)}
+                                    >
+                                        <option value={OrgRole.MEMBER}>Member</option>
+                                        <option value={OrgRole.PROJ_ADMIN}>Project Admin</option>
+                                        <option value={OrgRole.ORG_ADMIN}>Org Admin</option>
+                                    </select>
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={inviteMutation.isPending || !inviteEmail}
+                                    className="bg-primary text-white px-8 py-2.5 rounded-lg font-bold hover:bg-primary/90 transition shadow-md disabled:opacity-50 flex items-center justify-center whitespace-nowrap min-w-[140px]"
+                                >
+                                    {inviteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Invite"}
+                                </button>
+                            </form>
+                            {inviteMutation.isSuccess && (
+                                <p className="mt-3 text-sm text-emerald-600 flex items-center font-medium animate-in fade-in slide-in-from-top-1">
+                                    <Check className="w-4 h-4 mr-1.5" /> Invitation sent!
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Members List */}
                     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -231,24 +263,26 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <select
-                                            value={m.role}
-                                            onChange={(e) => roleMutation.mutate({ userId: m.user_id, role: e.target.value as OrgRole })}
-                                            className="text-xs bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-primary/10"
-                                        >
-                                            <option value={OrgRole.MEMBER}>Member</option>
-                                            <option value={OrgRole.PROJ_ADMIN}>Admin</option>
-                                            <option value={OrgRole.ORG_ADMIN}>Org Admin</option>
-                                        </select>
-                                        <button
-                                            onClick={() => removeMutation.mutate(m.user_id)}
-                                            className="p-1.5 text-slate-400 hover:text-destructive hover:bg-destructive/5 rounded-md transition-colors"
-                                            title="Remove member"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                                    {canManageMembers && (
+                                        <div className="flex items-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <select
+                                                value={m.role}
+                                                onChange={(e) => roleMutation.mutate({ userId: m.user_id, role: e.target.value as OrgRole })}
+                                                className="text-xs bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-primary/10"
+                                            >
+                                                <option value={OrgRole.MEMBER}>Member</option>
+                                                <option value={OrgRole.PROJ_ADMIN}>Admin</option>
+                                                <option value={OrgRole.ORG_ADMIN}>Org Admin</option>
+                                            </select>
+                                            <button
+                                                onClick={() => removeMutation.mutate(m.user_id)}
+                                                className="p-1.5 text-slate-400 hover:text-destructive hover:bg-destructive/5 rounded-md transition-colors"
+                                                title="Remove member"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -259,52 +293,55 @@ export default function SettingsPage() {
             {activeTab === "teams" && (
                 <div className="space-y-6">
                     {/* Create Team Section */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-lg font-bold">Create Team</h3>
-                                <p className="text-sm text-slate-500">Organize members into teams.</p>
+                    {canManageTeams && (
+                        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-lg font-bold">Create Team</h3>
+                                    <p className="text-sm text-slate-500">Organize members into teams.</p>
+                                </div>
                             </div>
+                            <form
+                                onSubmit={(e) => { e.preventDefault(); createTeamMutation.mutate(); }}
+                                className="flex flex-col gap-4"
+                            >
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="flex-1">
+                                        <input
+                                            type="text"
+                                            placeholder="Team Name (e.g. Frontend)"
+                                            className="w-full px-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
+                                            value={teamName}
+                                            onChange={(e) => setTeamName(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <input
+                                            type="text"
+                                            placeholder="Description (Optional)"
+                                            className="w-full px-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
+                                            value={teamDesc}
+                                            onChange={(e) => setTeamDesc(e.target.value)}
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={createTeamMutation.isPending || !teamName}
+                                        className="bg-primary text-white px-8 py-2.5 rounded-lg font-bold hover:bg-primary/90 transition shadow-md disabled:opacity-50 flex items-center justify-center whitespace-nowrap"
+                                    >
+                                        {createTeamMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Team"}
+                                    </button>
+                                </div>
+                            </form>
+                            {createTeamMutation.isSuccess && (
+                                <p className="mt-3 text-sm text-emerald-600 flex items-center font-medium animate-in fade-in slide-in-from-top-1">
+                                    <Check className="w-4 h-4 mr-1.5" /> Team created!
+                                </p>
+                            )}
                         </div>
-                        <form
-                            onSubmit={(e) => { e.preventDefault(); createTeamMutation.mutate(); }}
-                            className="flex flex-col gap-4"
-                        >
-                            <div className="flex flex-col md:flex-row gap-4">
-                                <div className="flex-1">
-                                    <input
-                                        type="text"
-                                        placeholder="Team Name (e.g. Frontend)"
-                                        className="w-full px-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
-                                        value={teamName}
-                                        onChange={(e) => setTeamName(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <div className="flex-1">
-                                    <input
-                                        type="text"
-                                        placeholder="Description (Optional)"
-                                        className="w-full px-4 py-2.5 border rounded-lg border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-white text-sm"
-                                        value={teamDesc}
-                                        onChange={(e) => setTeamDesc(e.target.value)}
-                                    />
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={createTeamMutation.isPending || !teamName}
-                                    className="bg-primary text-white px-8 py-2.5 rounded-lg font-bold hover:bg-primary/90 transition shadow-md disabled:opacity-50 flex items-center justify-center whitespace-nowrap"
-                                >
-                                    {createTeamMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Team"}
-                                </button>
-                            </div>
-                        </form>
-                        {createTeamMutation.isSuccess && (
-                            <p className="mt-3 text-sm text-emerald-600 flex items-center font-medium animate-in fade-in slide-in-from-top-1">
-                                <Check className="w-4 h-4 mr-1.5" /> Team created!
-                            </p>
-                        )}
-                    </div>
+                    )}
+
 
                     {/* Teams List */}
                     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">

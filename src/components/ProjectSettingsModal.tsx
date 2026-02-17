@@ -17,6 +17,7 @@ import { useOrgStore } from "@/store/orgStore";
 import { useProjectStore } from "@/store/projectStore";
 import { ProjectService } from "@/api/project";
 import { ProjectRole } from "@/types/rbac";
+import { usePermission } from "@/hooks/usePermission";
 
 interface ProjectSettingsModalProps {
     isOpen: boolean;
@@ -215,6 +216,8 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
     const { projectMembers, fetchProjectMembers, currentProject } = useProjectStore();
     const { members: orgMembers, fetchMembers: fetchOrgMembers } = useOrgStore();
     const [isAddOpen, setIsAddOpen] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+    const canManageMembers = usePermission("manage_project_members", "project");
 
     useEffect(() => {
         fetchProjectMembers(projectId);
@@ -237,21 +240,37 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
         onSuccess: async () => {
             await fetchProjectMembers(projectId);
             setIsAddOpen(false);
+            setError(null);
         },
+        onError: (err: any) => {
+            setError(err.response?.data?.detail || "Failed to add member");
+        }
     });
 
     const removeMutation = useMutation({
         mutationFn: async (userId: string) => {
             await ProjectService.removeMember(projectId, userId);
         },
-        onSuccess: () => fetchProjectMembers(projectId),
+        onSuccess: () => {
+            fetchProjectMembers(projectId);
+            setError(null);
+        },
+        onError: (err: any) => {
+            setError(err.response?.data?.detail || "Failed to remove member");
+        }
     });
 
     const changeRoleMutation = useMutation({
         mutationFn: async ({ userId, role }: { userId: string; role: ProjectRole }) => {
             await ProjectService.changeMemberRole(projectId, userId, { role });
         },
-        onSuccess: () => fetchProjectMembers(projectId),
+        onSuccess: () => {
+            fetchProjectMembers(projectId);
+            setError(null);
+        },
+        onError: (err: any) => {
+            setError(err.response?.data?.detail || "Failed to change role");
+        }
     });
 
     const availableToAdd = orgMembers?.filter(
@@ -260,18 +279,29 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
 
     return (
         <div className="space-y-6">
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center animate-in fade-in slide-in-from-top-1">
+                    <span className="font-bold mr-2">Error:</span> {error}
+                    <button onClick={() => setError(null)} className="ml-auto hover:text-red-900">
+                        <span className="sr-only">Dismiss</span>
+                        ×
+                    </button>
+                </div>
+            )}
             <div className="flex items-center justify-between">
                 <div>
                     <h3 className="text-lg font-semibold text-slate-900 mb-1">Project Members</h3>
                     <p className="text-sm text-slate-500">Manage who has access to this project.</p>
                 </div>
-                <button
-                    onClick={() => setIsAddOpen(true)}
-                    className="bg-primary text-white px-3 py-2 rounded-md font-medium text-sm flex items-center hover:bg-primary/90 transition"
-                >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Member
-                </button>
+                {canManageMembers && (
+                    <button
+                        onClick={() => setIsAddOpen(true)}
+                        className="bg-primary text-white px-3 py-2 rounded-md font-medium text-sm flex items-center hover:bg-primary/90 transition"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Member
+                    </button>
+                )}
             </div>
 
             {isAddOpen && (
@@ -310,6 +340,7 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
                 </div>
             )}
 
+            {/* Added error handling container above, keeping list below intact */}
             <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 overflow-hidden">
                 {projectMembers?.map((member) => {
                     return (
@@ -327,13 +358,14 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
                                 <select
                                     value={member.role}
                                     onChange={(e) => changeRoleMutation.mutate({ userId: member.user_id, role: e.target.value as ProjectRole })}
-                                    className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-primary bg-slate-50"
+                                    disabled={!canManageMembers}
+                                    className="text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-primary bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {Object.values(ProjectRole).map((role) => (
                                         <option key={role} value={role}>{role}</option>
                                     ))}
                                 </select>
-                                {member.role !== ProjectRole.OWNER && (
+                                {member.role !== ProjectRole.OWNER && canManageMembers && (
                                     <button
                                         onClick={() => removeMutation.mutate(member.user_id)}
                                         className="text-slate-400 hover:text-destructive transition p-1"
