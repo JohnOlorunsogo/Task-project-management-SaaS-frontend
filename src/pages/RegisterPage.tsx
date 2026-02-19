@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Link, useNavigate } from "react-router-dom";
-import { apiClient } from "@/api/client";
+import { AuthService } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { useOrgStore } from "@/store/orgStore";
 import { Loader2 } from "lucide-react";
@@ -35,21 +35,15 @@ const RegisterPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         try {
-            // 1. Register user (no org)
-            await apiClient.post("/auth/register", {
+            // Register and get auth response directly
+            const response = await AuthService.register({
                 email: data.email,
                 password: data.password,
                 full_name: data.full_name,
             });
 
-            // 2. Log them in immediately
-            const loginResponse = await apiClient.post("/auth/login", {
-                email: data.email,
-                password: data.password,
-            });
-
-            const { access_token, user } = loginResponse.data;
-            setAuth(user, access_token);
+            const { access_token, refresh_token, user } = response;
+            setAuth(user, access_token, refresh_token);
 
             // 3. Check if user already belongs to any org (e.g. was invited)
             try {

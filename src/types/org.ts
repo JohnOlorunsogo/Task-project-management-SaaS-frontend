@@ -12,10 +12,9 @@ export interface OrgMember {
     org_id: string;
     user_id: string;
     role: OrgRole;
-    joined_at: string;
+    created_at: string;
     email: string;
     full_name: string;
-    avatar_url?: string;
 }
 
 export interface UserMembership {
@@ -37,9 +36,6 @@ export interface TeamMember {
     team_id: string;
     user_id: string;
     created_at: string;
-    // user details might be joined
-    email?: string;
-    full_name?: string;
 }
 
 // Request Models

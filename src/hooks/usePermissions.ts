@@ -1,25 +1,16 @@
 import { useAuthStore } from "@/store/authStore";
-import { OrgRole, OrgPermission, ORG_PERMISSIONS, ProjectPermission, PROJECT_PERMISSIONS, ProjectRole } from "@/types/rbac";
+import { OrgPermission, ProjectPermission, PROJECT_PERMISSIONS, ProjectRole } from "@/types/rbac";
 
 export const usePermissions = (currentProjectRole?: ProjectRole | string) => {
     const { user } = useAuthStore();
 
-    const hasOrgRole = (roles: OrgRole[]) => {
-        return user?.org_role && roles.includes(user.org_role as OrgRole);
-    };
-
     const hasOrgPermission = (permission: OrgPermission) => {
-        if (!user?.org_role) return false;
-        // OrgAdmin has all permissions implicitly, but our map covers it explicitly too.
-        // If we want to rely on the map:
-        const role = user.org_role as OrgRole;
-        const allowedPermissions = ORG_PERMISSIONS[role] || [];
-        return allowedPermissions.includes(permission);
+        return user?.permissions?.includes(permission) || false;
     };
 
     const hasProjectPermission = (permission: ProjectPermission) => {
-        // OrgAdmin has all project permissions implicitly
-        if (user?.org_role === OrgRole.ORG_ADMIN) return true;
+        // If user has manage_org_settings, they have all project permissions implicitly
+        if (user?.permissions?.includes(OrgPermission.MANAGE_ORG_SETTINGS)) return true;
 
         if (!currentProjectRole) return false;
 
@@ -43,11 +34,10 @@ export const usePermissions = (currentProjectRole?: ProjectRole | string) => {
     };
 
     return {
-        hasOrgRole,
         hasOrgPermission,
         hasProjectPermission,
         hasPermission,
         canEditTask,
-        isAdmin: user?.org_role === OrgRole.ORG_ADMIN || user?.org_role === OrgRole.PROJ_ADMIN,
+        isAdmin: user?.permissions?.includes(OrgPermission.MANAGE_ORG_SETTINGS) || false,
     };
 };

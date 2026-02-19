@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Link, useNavigate } from "react-router-dom";
-import { apiClient } from "@/api/client";
+import { AuthService } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { useOrgStore } from "@/store/orgStore";
 import { Loader2 } from "lucide-react";
@@ -34,13 +34,13 @@ const LoginPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await apiClient.post("/auth/login", {
+            const response = await AuthService.login({
                 email: data.email,
                 password: data.password,
             });
 
-            const { access_token, user } = response.data;
-            setAuth(user, access_token);
+            const { access_token, refresh_token, user } = response;
+            setAuth(user, access_token, refresh_token);
 
             // Check if user has any organizations
             try {

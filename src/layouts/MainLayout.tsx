@@ -1,6 +1,5 @@
 import React from "react";
 import { NavLink, useNavigate, Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import {
     LayoutDashboard,
     FolderKanban,
@@ -13,12 +12,11 @@ import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useOrgStore } from "@/store/orgStore";
-import { apiClient } from "@/api/client";
 
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isCollapsed, setIsCollapsed] = React.useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
-    const { user, logout } = useAuthStore();
+    const { user, logout, switchOrg } = useAuthStore();
     const { orgs, currentOrgId, setCurrentOrg, fetchOrgs, teams, fetchTeams } = useOrgStore();
     const navigate = useNavigate();
 
@@ -38,23 +36,12 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         }
     }, [currentOrgId, fetchTeams]);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         useOrgStore.getState().clearOrgs();
-        logout();
+        await logout();
         navigate("/login");
     };
 
-    // Fetch current user's org role
-    const { data: myRole } = useQuery({
-        queryKey: ["my-role", currentOrgId],
-        queryFn: async () => {
-            const res = await apiClient.get(`/organizations/${currentOrgId}/members`);
-            const members = res.data;
-            const me = members.find((m: any) => m.user_id === user?.id);
-            return me?.role || null;
-        },
-        enabled: !!currentOrgId && !!user?.id,
-    });
 
     // If user has no orgs, redirect to onboarding
     if (orgCheckDone && !hasOrgs) {
@@ -90,11 +77,16 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         </label>
                         <select
                             value={currentOrgId || ""}
-                            onChange={(e) => {
+                            onChange={async (e) => {
                                 if (e.target.value === "create-new") {
                                     navigate("/onboarding");
                                 } else {
                                     setCurrentOrg(e.target.value);
+                                    try {
+                                        await switchOrg(e.target.value);
+                                    } catch (error) {
+                                        console.error("Failed to switch org", error);
+                                    }
                                 }
                             }}
                             className="w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/10 transition"
@@ -198,9 +190,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             >
                                 <div className="text-right hidden sm:block">
                                     <p className="text-sm font-medium text-slate-900 leading-none">{user?.full_name}</p>
-                                    {myRole && (
-                                        <p className="text-xs text-slate-500 mt-1 uppercase">{myRole.replace('_', ' ')}</p>
-                                    )}
                                 </div>
                                 <div className="w-9 h-9 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold border border-primary/10">
                                     {user?.full_name?.charAt(0)}

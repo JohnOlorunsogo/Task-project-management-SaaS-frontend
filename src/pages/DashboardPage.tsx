@@ -6,7 +6,7 @@ import { useOrgStore } from "@/store/orgStore";
 import { useAuthStore } from "@/store/authStore";
 import { useProjectStore } from "@/store/projectStore";
 import CreateProjectModal from "@/components/CreateProjectModal";
-import { OrgRole } from "@/types/rbac";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const DashboardPage: React.FC = () => {
     const { currentOrgId, members } = useOrgStore();
@@ -14,13 +14,7 @@ const DashboardPage: React.FC = () => {
     const { projects, fetchProjects, loading: projectsLoading } = useProjectStore();
     const [isCreateOpen, setIsCreateOpen] = React.useState(false);
 
-    // Derive current user's role in the organization
-    const currentMemberCallback = React.useCallback(() => {
-        return members.find(m => m.user_id === user?.id);
-    }, [members, user?.id]);
-
-    const currentMember = currentMemberCallback();
-    const isAdmin = currentMember?.role === OrgRole.ORG_ADMIN || currentMember?.role === OrgRole.PROJ_ADMIN;
+    const { isAdmin } = usePermissions();
 
     useEffect(() => {
         if (currentOrgId) {

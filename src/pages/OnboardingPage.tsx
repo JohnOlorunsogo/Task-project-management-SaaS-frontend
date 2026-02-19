@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiClient } from "../api/client";
+import { OrgService } from "../api/org";
 import { useOrgStore } from "../store/orgStore";
 import { useAuthStore } from "../store/authStore";
 import { Loader2, Building2, Users, LogOut } from "lucide-react";
@@ -20,7 +20,7 @@ export default function OnboardingPage() {
         setLoading(true);
         setError(null);
         try {
-            await apiClient.post("/organizations/", { name, slug });
+            await OrgService.createOrganization({ name, slug });
             await fetchOrgs();
             navigate("/dashboard");
         } catch (error: any) {
