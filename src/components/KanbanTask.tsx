@@ -50,15 +50,16 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, isOverlay }) => {
             ref={setNodeRef}
             style={style}
             className={cn(
-                "bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition active:cursor-grabbing group",
-                isOverlay && "shadow-xl border-primary/20 ring-1 ring-primary/10"
+                "bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all group relative",
+                isOverlay ? "shadow-2xl border-primary/30 ring-2 ring-primary/20 rotate-3 scale-105 z-50 cursor-grabbing" : "cursor-grab",
+                isDragging ? "opacity-30 border-dashed border-slate-400 shadow-none bg-slate-50/50" : ""
             )}
         >
-            <div className="flex items-start justify-between mb-2">
-                <div className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase text-white", getPriorityColor(task.priority))}>
+            <div className="flex items-start justify-between mb-3">
+                <div className={cn("px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide text-white shadow-sm", getPriorityColor(task.priority))}>
                     {task.priority}
                 </div>
-                <div {...attributes} {...listeners} className="p-1 -mr-1 text-slate-300 hover:text-slate-900 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition">
+                <div {...attributes} {...listeners} className="p-1 -mr-2 -mt-1 text-slate-200 hover:text-slate-400 active:text-slate-600 opacity-0 group-hover:opacity-100 transition-all outline-none">
                     <GripVertical className="w-4 h-4" />
                 </div>
             </div>
@@ -70,23 +71,23 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, isOverlay }) => {
                 {task.title}
             </h4>
 
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-50">
-                <div className="flex items-center space-x-3 text-slate-400">
+            <div className="flex items-center justify-between mt-5 pt-3 border-t border-slate-100/80">
+                <div className="flex items-center space-x-3 text-slate-500 font-medium">
                     {task.subtask_count > 0 && (
-                        <div className="flex items-center text-[10px]">
+                        <div className="flex items-center text-[11px] bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
                             {task.subtask_count} sub
                         </div>
                     )}
                     {task.due_date && (
-                        <div className="flex items-center text-[10px]">
-                            <Clock className="w-3 h-3 mr-1" />
+                        <div className="flex items-center text-[11px] bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                            <Clock className="w-3.5 h-3.5 mr-1 text-slate-400" />
                             {format(new Date(task.due_date), 'MMM d')}
                         </div>
                     )}
                 </div>
 
                 {task.assignee_count > 0 && (
-                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                    <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-inner border border-slate-200/50">
                         {task.assignee_count}
                     </div>
                 )}

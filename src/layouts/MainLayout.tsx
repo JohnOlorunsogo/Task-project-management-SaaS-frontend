@@ -55,23 +55,23 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ];
 
     return (
-        <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden">
+        <div className="flex h-screen bg-slate-50/50 text-slate-900 overflow-hidden font-sans">
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "bg-white border-r border-slate-200 transition-all duration-300 flex flex-col z-20",
-                    isCollapsed ? "w-16" : "w-64"
+                    "glass border-r border-slate-200/60 transition-all duration-300 flex flex-col z-20 shrink-0",
+                    isCollapsed ? "w-20" : "w-64"
                 )}
             >
-                <div className="h-16 flex items-center px-4 border-b border-slate-100">
-                    <div className="w-8 h-8 bg-primary rounded flex items-center justify-center shrink-0">
-                        <span className="text-white font-bold text-lg">T</span>
+                <div className="h-16 flex items-center px-6 border-b border-slate-200/50">
+                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-primary rounded-lg flex items-center justify-center shrink-0 shadow-sm shadow-primary/20">
+                        <span className="text-white font-bold text-lg leading-none">T</span>
                     </div>
-                    {!isCollapsed && <span className="ml-3 font-bold text-lg truncate">TaskPM</span>}
+                    {!isCollapsed && <span className="ml-3 font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 truncate">Project Hub</span>}
                 </div>
 
                 {!isCollapsed && (
-                    <div className="px-4 py-4">
+                    <div className="px-5 py-5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                             Organization
                         </label>
@@ -104,26 +104,29 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     </div>
                 )}
 
-                <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+                <nav className="flex-1 py-4 px-3 space-y-1.5 overflow-y-auto">
                     {navItems.map((item) => (
                         <NavLink
                             key={item.path}
                             to={item.path}
                             className={({ isActive }) => cn(
-                                "flex items-center px-3 py-2 rounded-md transition-colors",
+                                "flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group",
                                 isActive
-                                    ? "bg-slate-100 text-primary font-medium"
-                                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                    ? "bg-primary/10 text-primary font-semibold shadow-sm"
+                                    : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-900"
                             )}
                         >
-                            <item.icon className="w-5 h-5 shrink-0" />
+                            <item.icon className={cn(
+                                "w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110",
+                                isCollapsed ? "mx-auto" : ""
+                            )} />
                             {!isCollapsed && <span className="ml-3 truncate">{item.label}</span>}
                         </NavLink>
                     ))}
 
-                    <div className="pt-4 pb-2">
-                        <div className={cn("px-3 mb-2", isCollapsed ? "opacity-0" : "opacity-100")}>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <div className="pt-6 pb-2">
+                        <div className={cn("px-3 mb-3", isCollapsed ? "opacity-0" : "opacity-100 transition-opacity")}>
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                                 Teams
                             </span>
                         </div>
@@ -134,65 +137,69 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             {teams.map((team) => (
                                 <div
                                     key={team.id}
-                                    className="w-full flex items-center px-3 py-1.5 rounded-md text-slate-600 hover:bg-slate-50 text-sm cursor-pointer"
+                                    className={cn(
+                                        "w-full flex items-center px-3 py-2 rounded-xl text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 text-sm cursor-pointer transition-colors",
+                                        isCollapsed ? "justify-center" : ""
+                                    )}
                                 >
-                                    <div className="w-2 h-2 rounded-full bg-primary/60 shrink-0" />
-                                    {!isCollapsed && <span className="ml-3 truncate">{team.name}</span>}
+                                    <div className="w-2 h-2 rounded-full bg-indigo-400 shrink-0 shadow-sm shadow-indigo-400/50" />
+                                    {!isCollapsed && <span className="ml-3 truncate font-medium">{team.name}</span>}
                                 </div>
                             ))}
                         </div>
                     </div>
                 </nav>
 
-                <div className="p-2 border-t border-slate-100">
+                <div className="p-3 border-t border-slate-200/50 space-y-1">
                     <button
                         onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="w-full flex items-center px-3 py-2 rounded-md text-slate-600 hover:bg-slate-50 transition-colors"
+                        className="w-full flex items-center px-3 py-2.5 rounded-xl text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 transition-colors group"
                     >
-                        {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-                        {!isCollapsed && <span className="ml-3">Collapse</span>}
+                        {isCollapsed ? <ChevronRight className="w-5 h-5 mx-auto transition-transform group-hover:translate-x-1" /> : <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />}
+                        {!isCollapsed && <span className="ml-3 font-medium">Collapse</span>}
                     </button>
 
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center px-3 py-2 rounded-md text-destructive hover:bg-destructive/5 transition-colors"
+                        className="w-full flex items-center px-3 py-2.5 rounded-xl text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors group"
                     >
-                        <LogOut className="w-5 h-5" />
-                        {!isCollapsed && <span className="ml-3">Logout</span>}
+                        <LogOut className={cn("w-5 h-5 transition-transform group-hover:-translate-x-1", isCollapsed ? "mx-auto" : "")} />
+                        {!isCollapsed && <span className="ml-3 font-medium">Logout</span>}
                     </button>
                 </div>
             </aside>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 {/* Header */}
-                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shrink-0">
-                    <div className="flex items-center space-x-2">
-                        <h2 className="text-lg font-semibold text-slate-800 truncate">
+                <header className="h-16 glass border-b border-slate-200/60 flex items-center justify-between px-8 z-10 shrink-0 sticky top-0">
+                    <div className="flex items-center space-x-3">
+                        <h2 className="text-xl font-bold tracking-tight text-slate-800 truncate">
                             {user?.full_name ? `Dashboard` : "Welcome"}
                         </h2>
                         {currentOrgId && orgs.find(o => o.id === currentOrgId) && (
-                            <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-medium">
+                            <span className="bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wider">
                                 {orgs.find(o => o.id === currentOrgId)?.name}
                             </span>
                         )}
                     </div>
 
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-6">
                         <NotificationCenter />
 
-                        <div className="h-8 w-px bg-slate-200 mx-2" />
+                        <div className="h-8 w-px bg-slate-200" />
 
                         <div className="relative">
                             <button
                                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                                className="flex items-center space-x-3 hover:bg-slate-50 p-2 rounded-lg transition-colors outline-none"
+                                className="flex items-center space-x-3 hover:bg-slate-100/80 p-1.5 pr-3 rounded-full transition-colors outline-none border border-transparent hover:border-slate-200"
                             >
-                                <div className="text-right hidden sm:block">
-                                    <p className="text-sm font-medium text-slate-900 leading-none">{user?.full_name}</p>
-                                </div>
-                                <div className="w-9 h-9 bg-primary/10 text-primary rounded-full flex items-center justify-center font-bold border border-primary/10">
+                                <div className="w-9 h-9 bg-gradient-to-br from-indigo-100 to-primary/20 text-indigo-700 rounded-full flex items-center justify-center font-bold shadow-inner">
                                     {user?.full_name?.charAt(0)}
+                                </div>
+                                <div className="text-left hidden sm:block">
+                                    <p className="text-sm font-semibold text-slate-800 leading-none mb-0.5">{user?.full_name}</p>
+                                    <p className="text-[10px] text-slate-500 leading-none">Admin</p>
                                 </div>
                             </button>
 
@@ -203,31 +210,33 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                                         className="fixed inset-0 z-30"
                                         onClick={() => setIsUserMenuOpen(false)}
                                     />
-                                    <div className="absolute right-0 top-14 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-40 animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="px-4 py-3 border-b border-slate-100 sm:hidden">
-                                            <p className="text-sm font-medium text-slate-900">{user?.full_name}</p>
-                                            <p className="text-xs text-slate-500">{user?.email}</p>
+                                    <div className="absolute right-0 top-14 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-200 py-2 z-40 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="px-5 py-4 border-b border-slate-100 mb-1">
+                                            <p className="text-sm font-bold text-slate-900 truncate">{user?.full_name}</p>
+                                            <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email}</p>
                                         </div>
-                                        <button
-                                            onClick={() => {
-                                                setIsUserMenuOpen(false);
-                                                navigate("/settings");
-                                            }}
-                                            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center"
-                                        >
-                                            <Settings className="w-4 h-4 mr-2 text-slate-400" />
-                                            Settings
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setIsUserMenuOpen(false);
-                                                handleLogout();
-                                            }}
-                                            className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/5 flex items-center"
-                                        >
-                                            <LogOut className="w-4 h-4 mr-2" />
-                                            Logout
-                                        </button>
+                                        <div className="px-2">
+                                            <button
+                                                onClick={() => {
+                                                    setIsUserMenuOpen(false);
+                                                    navigate("/settings");
+                                                }}
+                                                className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center"
+                                            >
+                                                <Settings className="w-4 h-4 mr-3 text-slate-400" />
+                                                Account Settings
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setIsUserMenuOpen(false);
+                                                    handleLogout();
+                                                }}
+                                                className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors flex items-center mt-1"
+                                            >
+                                                <LogOut className="w-4 h-4 mr-3" />
+                                                Log Out
+                                            </button>
+                                        </div>
                                     </div>
                                 </>
                             )}

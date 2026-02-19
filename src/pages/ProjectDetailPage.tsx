@@ -45,78 +45,78 @@ const ProjectDetailPage: React.FC = () => {
     return (
         <div className="h-full flex flex-col -m-6">
             {/* Project Header */}
-            <div className="bg-white border-b border-slate-200 px-6 py-4 shrink-0">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold">
-                            {currentProject.name.charAt(0)}
+            <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-8 py-6 shrink-0 z-10 sticky top-0">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                    <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-primary rounded-xl flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-primary/20">
+                            {currentProject.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-slate-900">{currentProject.name}</h1>
-                            <p className="text-xs text-slate-500">Project · Active</p>
+                            <h1 className="text-2xl font-black text-slate-900 tracking-tight">{currentProject.name}</h1>
+                            <p className="text-sm font-medium text-slate-500 mt-0.5">Active Project</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                        <div className="flex -space-x-1.5 mr-4">
-                            {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="w-7 h-7 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[8px] font-bold">
+                    <div className="flex items-center space-x-4">
+                        {/* Member Stack */}
+                        <div className="flex -space-x-2">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className={`w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm z-[${4 - i}] bg-gradient-to-br from-slate-400 to-slate-500`}>
                                     U{i}
                                 </div>
                             ))}
-                            <button className="w-7 h-7 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 transition cursor-pointer">
-                                <Plus className="w-3 h-3" />
+                            <button className="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition shadow-sm z-0">
+                                <Plus className="w-3.5 h-3.5" />
                             </button>
                         </div>
+                        <div className="h-6 w-px bg-slate-200" />
                         <button
                             onClick={() => setIsSettingsOpen(true)}
-                            className="p-2 hover:bg-slate-50 rounded-md text-slate-400 hover:text-slate-600 transition"
+                            className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-800 transition-colors shadow-sm border border-slate-200/60"
                         >
                             <Settings className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
 
-                {/* View Switcher Tabs */}
-                <div className="flex items-center justify-between">
-                    <div className="flex space-x-1">
+                {/* View Switcher and Controls */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex space-x-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 self-start">
                         {views.map((view) => (
                             <button
                                 key={view.id}
                                 onClick={() => setSearchParams({ view: view.id })}
                                 className={cn(
-                                    "flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors relative",
+                                    "flex items-center px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200",
                                     currentView === view.id
-                                        ? "text-primary bg-primary/5"
-                                        : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                                        ? "bg-white text-primary shadow-sm"
+                                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
                                 )}
                             >
-                                <view.icon className="w-4 h-4 mr-2" />
+                                <view.icon className={cn("w-4 h-4 mr-2", currentView === view.id ? "text-primary" : "text-slate-400")} />
                                 {view.label}
-                                {currentView === view.id && (
-                                    <div className="absolute bottom-[-17px] left-0 right-0 h-0.5 bg-primary" />
-                                )}
                             </button>
                         ))}
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                        <div className="relative">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <div className="flex items-center space-x-3">
+                        <div className="relative group flex-1 md:flex-none">
+                            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
                             <input
                                 placeholder="Search tasks..."
-                                className="pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-sm outline-none focus:ring-1 focus:ring-primary/20 w-48 transition-all focus:w-64"
+                                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary md:w-56 md:focus:w-72 transition-all shadow-sm shadow-slate-200/50"
                             />
                         </div>
-                        <button className="flex items-center px-3 py-1.5 border border-slate-200 rounded-md text-sm text-slate-600 hover:bg-slate-50">
-                            <Filter className="w-4 h-4 mr-2" />
-                            Filter
+                        <button className="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm shadow-slate-200/50">
+                            <Filter className="w-4 h-4 mr-2 text-slate-400" />
+                            Filters
                         </button>
                         <button
                             onClick={() => setIsTaskModalOpen(true)}
-                            className="bg-primary text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-primary/90 transition shadow-sm"
+                            className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center hover:-translate-y-0.5 transition-all shadow-lg shadow-primary/30 hover:shadow-primary/40 active:scale-[0.98]"
                         >
-                            Add Task
+                            <Plus className="w-4 h-4 mr-1.5" />
+                            Task
                         </button>
                     </div>
                 </div>
