@@ -46,18 +46,13 @@ const RegisterPage: React.FC = () => {
             setAuth(user, access_token, refresh_token);
 
             // 3. Check if user already belongs to any org (e.g. was invited)
-            try {
-                const orgs = await fetchOrgs();
-                if (orgs && orgs.length > 0) {
-                    navigate("/dashboard");
-                    return;
-                }
-            } catch {
-                // No orgs, continue to onboarding
+            const orgs = await fetchOrgs();
+            if (orgs && orgs.length > 0) {
+                navigate("/dashboard");
+            } else {
+                // 4. New user with no orgs → onboarding
+                navigate("/onboarding");
             }
-
-            // 4. New user with no orgs → onboarding
-            navigate("/onboarding");
         } catch (err: any) {
             setError(err.response?.data?.detail || "Registration failed. Try again.");
         } finally {

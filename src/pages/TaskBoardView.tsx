@@ -17,7 +17,8 @@ import {
 import {
     sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import { apiClient } from "@/api/client";
+import { TaskService } from "@/api/task";
+import { TaskListResponse } from "@/types/task";
 import KanbanColumn from "../components/KanbanColumn";
 import KanbanTask from "../components/KanbanTask";
 
@@ -26,26 +27,23 @@ interface TaskBoardViewProps {
 }
 
 const COLUMNS = [
-    { id: "todo", title: "To Do" },
-    { id: "in_progress", title: "In Progress" },
-    { id: "completed", title: "Completed" },
+    { id: "To Do", title: "To Do" },
+    { id: "In Progress", title: "In Progress" },
+    { id: "Completed", title: "Completed" },
 ];
 
 const TaskBoardView: React.FC<TaskBoardViewProps> = ({ projectId }) => {
     const queryClient = useQueryClient();
-    const [activeTask, setActiveTask] = useState<any>(null);
+    const [activeTask, setActiveTask] = useState<TaskListResponse | null>(null);
 
     const { data: tasks, isLoading } = useQuery({
         queryKey: ["tasks", projectId],
-        queryFn: async () => {
-            const response = await apiClient.get(`/tasks?project_id=${projectId}`);
-            return response.data;
-        },
+        queryFn: () => TaskService.listTasks({ project_id: projectId }),
     });
 
     const updateTaskMutation = useMutation({
-        mutationFn: async ({ taskId, status }: { taskId: string; status: string }) => {
-            return apiClient.patch(`/tasks/${taskId}`, { status });
+        mutationFn: async ({ taskId, status_name }: { taskId: string; status_name: string }) => {
+            return TaskService.updateTask(taskId, { status_name });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
@@ -64,14 +62,11 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ projectId }) => {
     );
 
     const tasksByStatus = useMemo(() => {
-        const groups: Record<string, any[]> = {
-            todo: [],
-            in_progress: [],
-            completed: [],
-        };
-        tasks?.forEach((task: any) => {
-            if (groups[task.status]) {
-                groups[task.status].push(task);
+        const groups: Record<string, TaskListResponse[]> = {};
+        COLUMNS.forEach((col) => { groups[col.id] = []; });
+        tasks?.forEach((task: TaskListResponse) => {
+            if (groups[task.status_name]) {
+                groups[task.status_name].push(task);
             }
         });
         return groups;
@@ -79,8 +74,8 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ projectId }) => {
 
     const handleDragStart = (event: DragStartEvent) => {
         const { active } = event;
-        const task = tasks?.find((t: any) => t.id === active.id);
-        setActiveTask(task);
+        const task = tasks?.find((t: TaskListResponse) => t.id === active.id);
+        setActiveTask(task || null);
     };
 
     const handleDragOver = (_event: DragOverEvent) => {
@@ -98,15 +93,15 @@ const TaskBoardView: React.FC<TaskBoardViewProps> = ({ projectId }) => {
 
         // If dropped on a column
         const isOverColumn = COLUMNS.some((col) => col.id === overId);
-        const task = tasks?.find((t: any) => t.id === taskId);
+        const task = tasks?.find((t: TaskListResponse) => t.id === taskId);
 
-        if (isOverColumn && task && task.status !== overId) {
-            updateTaskMutation.mutate({ taskId, status: overId });
+        if (isOverColumn && task && task.status_name !== overId) {
+            updateTaskMutation.mutate({ taskId, status_name: overId });
         } else {
             // If dropped on another task
-            const overTask = tasks?.find((t: any) => t.id === overId);
-            if (overTask && task && task.status !== overTask.status) {
-                updateTaskMutation.mutate({ taskId, status: overTask.status });
+            const overTask = tasks?.find((t: TaskListResponse) => t.id === overId);
+            if (overTask && task && task.status_name !== overTask.status_name) {
+                updateTaskMutation.mutate({ taskId, status_name: overTask.status_name });
             }
         }
     };

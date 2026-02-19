@@ -3,16 +3,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { X, Loader2 } from "lucide-react";
-import { apiClient } from "@/api/client";
+import { TaskService } from "@/api/task";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const taskSchema = z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().optional(),
-    priority: z.enum(["low", "medium", "high"]),
-    status: z.enum(["todo", "in_progress", "completed"]),
+    priority: z.enum(["low", "medium", "high", "critical"]),
+    status_name: z.string(),
     due_date: z.string().optional(),
-    assignee_id: z.string().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -35,13 +34,16 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ projectId, isOpen, on
         resolver: zodResolver(taskSchema),
         defaultValues: {
             priority: "medium",
-            status: "todo",
+            status_name: "To Do",
         },
     });
 
     const mutation = useMutation({
         mutationFn: async (data: TaskFormValues) => {
-            return apiClient.post("/tasks", { ...data, project_id: projectId });
+            return TaskService.createTask({
+                ...data,
+                project_id: projectId,
+            });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
@@ -94,17 +96,18 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ projectId, isOpen, on
                                 <option value="low">Low</option>
                                 <option value="medium">Medium</option>
                                 <option value="high">High</option>
+                                <option value="critical">Critical</option>
                             </select>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
                             <select
-                                {...register("status")}
+                                {...register("status_name")}
                                 className="w-full px-3 py-2 border rounded-md border-slate-300 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white transition"
                             >
-                                <option value="todo">To Do</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="completed">Completed</option>
+                                <option value="To Do">To Do</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Completed">Completed</option>
                             </select>
                         </div>
                     </div>

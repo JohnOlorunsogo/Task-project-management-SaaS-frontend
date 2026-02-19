@@ -10,7 +10,6 @@ export interface Project {
     end_date?: string;
     is_template: boolean;
     created_at: string;
-    status?: string; // Optional per UI usage (Active etc), though not in API response spec explicitly it was in detailed page
 }
 
 export interface ProjectMember {
@@ -21,7 +20,6 @@ export interface ProjectMember {
     created_at: string;
     full_name: string;
     email: string;
-    avatar_url?: string;
 }
 
 export interface UserProjectMembership {

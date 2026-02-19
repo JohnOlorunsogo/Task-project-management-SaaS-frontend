@@ -43,18 +43,12 @@ const LoginPage: React.FC = () => {
             setAuth(user, access_token, refresh_token);
 
             // Check if user has any organizations
-            try {
-                const orgs = await fetchOrgs();
-                if (orgs && orgs.length > 0) {
-                    navigate("/dashboard");
-                    return;
-                }
-            } catch {
-                // No orgs found
+            const orgs = await fetchOrgs();
+            if (orgs && orgs.length > 0) {
+                navigate("/dashboard");
+            } else {
+                navigate("/onboarding");
             }
-
-            // No orgs → send to onboarding
-            navigate("/onboarding");
         } catch (err: any) {
             setError(err.response?.data?.detail || "Invalid email or password");
         } finally {

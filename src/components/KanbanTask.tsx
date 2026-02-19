@@ -3,14 +3,14 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
     Clock,
-    MessageSquare,
     GripVertical
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { TaskListResponse } from "@/types/task";
 
 interface KanbanTaskProps {
-    task: any;
+    task: TaskListResponse;
     isOverlay?: boolean;
 }
 
@@ -32,11 +32,17 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, isOverlay }) => {
 
     const getPriorityColor = (priority: string) => {
         switch (priority.toLowerCase()) {
+            case 'critical': return 'bg-purple-600';
             case 'high': return 'bg-red-500';
             case 'medium': return 'bg-orange-500';
             case 'low': return 'bg-blue-500';
             default: return 'bg-slate-400';
         }
+    };
+
+    const isCompleted = (statusName: string) => {
+        const lower = statusName.toLowerCase();
+        return lower.includes('done') || lower.includes('completed');
     };
 
     return (
@@ -59,23 +65,18 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, isOverlay }) => {
 
             <h4 className={cn(
                 "font-semibold text-slate-800 text-sm mb-2",
-                task.status === 'completed' && "line-through text-slate-400"
+                isCompleted(task.status_name) && "line-through text-slate-400"
             )}>
                 {task.title}
             </h4>
 
-            {task.description && (
-                <p className="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed">
-                    {task.description}
-                </p>
-            )}
-
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-50">
                 <div className="flex items-center space-x-3 text-slate-400">
-                    <div className="flex items-center text-[10px]">
-                        <MessageSquare className="w-3 h-3 mr-1" />
-                        {task.comments_count || 0}
-                    </div>
+                    {task.subtask_count > 0 && (
+                        <div className="flex items-center text-[10px]">
+                            {task.subtask_count} sub
+                        </div>
+                    )}
                     {task.due_date && (
                         <div className="flex items-center text-[10px]">
                             <Clock className="w-3 h-3 mr-1" />
@@ -84,9 +85,11 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, isOverlay }) => {
                     )}
                 </div>
 
-                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">
-                    {task.assignee_id ? 'U' : '?'}
-                </div>
+                {task.assignee_count > 0 && (
+                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                        {task.assignee_count}
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -53,7 +53,7 @@ const ProjectDetailPage: React.FC = () => {
                         </div>
                         <div>
                             <h1 className="text-xl font-bold text-slate-900">{currentProject.name}</h1>
-                            <p className="text-xs text-slate-500">Project · {currentProject.status || "Active"}</p>
+                            <p className="text-xs text-slate-500">Project · Active</p>
                         </div>
                     </div>
 

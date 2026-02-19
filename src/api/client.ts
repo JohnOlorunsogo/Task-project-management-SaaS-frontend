@@ -41,8 +41,14 @@ apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            useAuthStore.getState().logout();
-            window.location.href = "/login";
+            // Don't auto-logout during auth flow or initial org fetch
+            const url = error.config?.url || "";
+            const isAuthEndpoint = url.startsWith("/auth/");
+            const isOrgListEndpoint = url === "/organizations/me";
+            if (!isAuthEndpoint && !isOrgListEndpoint) {
+                useAuthStore.getState().logout();
+                window.location.href = "/login";
+            }
         }
         return Promise.reject(error);
     }

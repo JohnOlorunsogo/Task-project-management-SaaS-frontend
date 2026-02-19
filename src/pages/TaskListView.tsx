@@ -4,12 +4,11 @@ import {
     CheckCircle2,
     Circle,
     Clock,
-    MessageSquare,
-    Paperclip,
     MoreHorizontal,
     GripVertical
 } from "lucide-react";
-import { apiClient } from "@/api/client";
+import { TaskService } from "@/api/task";
+import { TaskListResponse } from "@/types/task";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -20,19 +19,29 @@ interface TaskListViewProps {
 const TaskListView: React.FC<TaskListViewProps> = ({ projectId }) => {
     const { data: tasks, isLoading } = useQuery({
         queryKey: ["tasks", projectId],
-        queryFn: async () => {
-            const response = await apiClient.get(`/tasks?project_id=${projectId}`);
-            return response.data;
-        },
+        queryFn: () => TaskService.listTasks({ project_id: projectId }),
     });
 
     const getPriorityColor = (priority: string) => {
         switch (priority.toLowerCase()) {
+            case 'critical': return 'text-purple-600';
             case 'high': return 'text-red-500';
             case 'medium': return 'text-orange-500';
             case 'low': return 'text-blue-500';
             default: return 'text-slate-400';
         }
+    };
+
+    const getStatusStyle = (statusName: string) => {
+        const lower = statusName.toLowerCase();
+        if (lower.includes('done') || lower.includes('completed')) return "bg-green-100 text-green-700";
+        if (lower.includes('progress')) return "bg-blue-100 text-blue-700";
+        return "bg-slate-100 text-slate-600";
+    };
+
+    const isCompleted = (statusName: string) => {
+        const lower = statusName.toLowerCase();
+        return lower.includes('done') || lower.includes('completed');
     };
 
     if (isLoading) return <div className="p-12 text-center text-slate-500 text-sm">Loading tasks...</div>;
@@ -46,7 +55,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ projectId }) => {
                             <th className="w-10 px-4 py-3"></th>
                             <th className="px-4 py-3 font-semibold">Task Name</th>
                             <th className="w-32 px-4 py-3 font-semibold">Status</th>
-                            <th className="w-32 px-4 py-3 font-semibold">Assignee</th>
+                            <th className="w-32 px-4 py-3 font-semibold">Assignees</th>
                             <th className="w-32 px-4 py-3 font-semibold">Due Date</th>
                             <th className="w-24 px-4 py-3 font-semibold">Priority</th>
                             <th className="w-20 px-4 py-3 text-right"></th>
@@ -60,13 +69,13 @@ const TaskListView: React.FC<TaskListViewProps> = ({ projectId }) => {
                                 </td>
                             </tr>
                         ) : (
-                            tasks?.map((task: any) => (
+                            tasks?.map((task: TaskListResponse) => (
                                 <tr key={task.id} className="group hover:bg-slate-50/80 transition-colors">
                                     <td className="px-4 py-3">
                                         <div className="flex items-center">
                                             <GripVertical className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition mr-2 cursor-grab" />
                                             <button className="text-slate-300 hover:text-primary transition">
-                                                {task.status === 'completed' ? (
+                                                {isCompleted(task.status_name) ? (
                                                     <CheckCircle2 className="w-5 h-5 text-green-500" />
                                                 ) : (
                                                     <Circle className="w-5 h-5" />
@@ -78,37 +87,31 @@ const TaskListView: React.FC<TaskListViewProps> = ({ projectId }) => {
                                         <div className="flex flex-col">
                                             <span className={cn(
                                                 "font-medium text-slate-900",
-                                                task.status === 'completed' && "line-through text-slate-400"
+                                                isCompleted(task.status_name) && "line-through text-slate-400"
                                             )}>
                                                 {task.title}
                                             </span>
-                                            <div className="flex items-center space-x-3 mt-1 text-[11px] text-slate-400 uppercase tracking-wide">
-                                                <span className="flex items-center">
-                                                    <MessageSquare className="w-3 h-3 mr-1" /> {task.comments_count || 0}
+                                            {task.subtask_count > 0 && (
+                                                <span className="text-[11px] text-slate-400 mt-1">
+                                                    {task.subtask_count} subtask{task.subtask_count !== 1 ? 's' : ''}
                                                 </span>
-                                                <span className="flex items-center">
-                                                    <Paperclip className="w-3 h-3 mr-1" /> {task.attachments_count || 0}
-                                                </span>
-                                            </div>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-4 py-3">
                                         <span className={cn(
                                             "px-2 py-1 rounded text-[11px] font-bold uppercase tracking-wider",
-                                            task.status === 'todo' && "bg-slate-100 text-slate-600",
-                                            task.status === 'in_progress' && "bg-blue-100 text-blue-700",
-                                            task.status === 'completed' && "bg-green-100 text-green-700"
+                                            getStatusStyle(task.status_name)
                                         )}>
-                                            {task.status.replace('_', ' ')}
+                                            {task.status_name}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <div className="flex items-center">
-                                            <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold mr-2">
-                                                {task.assignee_id ? 'U' : '?'}
-                                            </div>
-                                            <span className="text-slate-600 truncate">{task.assignee_name || 'Unassigned'}</span>
-                                        </div>
+                                        <span className="text-slate-600 text-xs">
+                                            {task.assignee_count > 0
+                                                ? `${task.assignee_count} assignee${task.assignee_count !== 1 ? 's' : ''}`
+                                                : 'Unassigned'}
+                                        </span>
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center text-slate-500">

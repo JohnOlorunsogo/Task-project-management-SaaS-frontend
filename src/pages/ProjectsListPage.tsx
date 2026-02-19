@@ -14,13 +14,11 @@ import {
 } from "lucide-react";
 import { useOrgStore } from "@/store/orgStore";
 import { useProjectStore } from "@/store/projectStore";
-import { useAuthStore } from "@/store/authStore";
 import CreateProjectModal from "@/components/CreateProjectModal";
-import { OrgRole } from "@/types/rbac";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const ProjectsListPage: React.FC = () => {
-    const { currentOrgId, members } = useOrgStore();
-    const { user } = useAuthStore();
+    const { currentOrgId } = useOrgStore();
     const { projects, fetchProjects, deleteProject, loading: storeLoading } = useProjectStore();
     const queryClient = useQueryClient();
 
@@ -30,9 +28,7 @@ const ProjectsListPage: React.FC = () => {
     const [deletingId, setDeletingId] = React.useState<string | null>(null);
     const [showAllProjects, setShowAllProjects] = React.useState(false);
 
-    // Check if user is admin
-    const currentMember = members.find(m => m.user_id === user?.id);
-    const isAdmin = currentMember?.role === OrgRole.ORG_ADMIN || currentMember?.role === OrgRole.PROJ_ADMIN;
+    const { isAdmin } = usePermissions();
 
     // Fetch projects on mount or when org changes or toggle changes
     useEffect(() => {

@@ -6,6 +6,7 @@ import { Organization, OrgMember, Team } from "../types/org";
 interface OrgState {
     currentOrgId: string | null;
     orgs: Organization[];
+    orgsLoaded: boolean;
     currentOrg: Organization | null;
     members: OrgMember[];
     teams: Team[];
@@ -24,6 +25,7 @@ export const useOrgStore = create<OrgState>()(
         (set, get) => ({
             currentOrgId: null,
             orgs: [],
+            orgsLoaded: false,
             currentOrg: null,
             members: [],
             teams: [],
@@ -40,7 +42,7 @@ export const useOrgStore = create<OrgState>()(
             fetchOrgs: async () => {
                 try {
                     const orgs = await OrgService.listMyOrganizations();
-                    set({ orgs });
+                    set({ orgs, orgsLoaded: true });
 
                     // Auto-select first org if none selected or current is invalid
                     const currentId = get().currentOrgId;
@@ -53,7 +55,7 @@ export const useOrgStore = create<OrgState>()(
                     return orgs;
                 } catch (error) {
                     console.error("Failed to fetch organizations", error);
-                    return [];
+                    throw error;
                 }
             },
 
@@ -79,7 +81,7 @@ export const useOrgStore = create<OrgState>()(
                 }
             },
 
-            clearOrgs: () => set({ currentOrgId: null, orgs: [], currentOrg: null, members: [], teams: [] }),
+            clearOrgs: () => set({ currentOrgId: null, orgs: [], orgsLoaded: false, currentOrg: null, members: [], teams: [] }),
         }),
         {
             name: "org-storage",
