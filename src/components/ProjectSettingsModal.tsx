@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { useOrgStore } from "@/store/orgStore";
 import { useProjectStore } from "@/store/projectStore";
 import { ProjectService } from "@/api/project";
-import { ProjectRole } from "@/types/rbac";
+import { ProjectRole, ProjectPermission } from "@/types/rbac";
 import { usePermission } from "@/hooks/usePermission";
 
 interface ProjectSettingsModalProps {
@@ -217,7 +217,7 @@ const MembersTab: React.FC<{ projectId: string }> = ({ projectId }) => {
     const { members: orgMembers, fetchMembers: fetchOrgMembers } = useOrgStore();
     const [isAddOpen, setIsAddOpen] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
-    const canManageMembers = usePermission("manage_project_members", "project");
+    const canManageMembers = usePermission(ProjectPermission.MANAGE_MEMBERS, "project");
 
     useEffect(() => {
         fetchProjectMembers(projectId);

@@ -42,8 +42,8 @@ const RegisterPage: React.FC = () => {
                 full_name: data.full_name,
             });
 
-            const { access_token, refresh_token, user } = response;
-            setAuth(user, access_token, refresh_token);
+            const { access_token, refresh_token, user, permissions } = response;
+            setAuth({ ...user, permissions: permissions || user.permissions || [] }, access_token, refresh_token);
 
             // 3. Check if user already belongs to any org (e.g. was invited)
             const orgs = await fetchOrgs();

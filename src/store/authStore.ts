@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>()(
                     const response = await AuthService.switchOrg({ org_id: orgId });
                     localStorage.setItem("auth_token", response.access_token);
                     set({
-                        user: response.user,
+                        user: { ...response.user, permissions: response.permissions || response.user.permissions || [] },
                         token: response.access_token,
                         refreshToken: response.refresh_token,
                     });

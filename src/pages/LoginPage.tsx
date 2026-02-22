@@ -39,8 +39,8 @@ const LoginPage: React.FC = () => {
                 password: data.password,
             });
 
-            const { access_token, refresh_token, user } = response;
-            setAuth(user, access_token, refresh_token);
+            const { access_token, refresh_token, user, permissions } = response;
+            setAuth({ ...user, permissions: permissions || user.permissions || [] }, access_token, refresh_token);
 
             // Check if user has any organizations
             const orgs = await fetchOrgs();

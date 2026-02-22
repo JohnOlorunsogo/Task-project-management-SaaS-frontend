@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { ProjectService } from "../api/project";
 import { Project, ProjectMember, CustomStatus } from "../types/project";
 import { useAuthStore } from "./authStore";
+import { PROJECT_PERMISSIONS } from "../types/rbac";
 
 interface ProjectState {
     projects: Project[];
@@ -61,7 +62,7 @@ export const useProjectStore = create<ProjectState>()(
                     if (userId) {
                         try {
                             const membership = await ProjectService.checkMembership(projectId, userId);
-                            permissions = membership.permissions;
+                            permissions = membership.permissions || PROJECT_PERMISSIONS[membership.role] || [];
                         } catch (e) {
                             console.warn("Failed to check project membership", e);
                         }
